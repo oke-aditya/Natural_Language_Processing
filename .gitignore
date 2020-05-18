@@ -1,3 +1,10 @@
+#Data files
+*.csv
+#vscode stuff
+*.vscode
+#data
+Learning_Transformers/BERT/data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

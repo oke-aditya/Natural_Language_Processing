@@ -1,2 +1,2 @@
 # Natural_Language_Processing
-My Learnings, Tutorials and stuff with NLP
+My Learnings, tutorials and code example for NLP
