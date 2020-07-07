@@ -4,6 +4,7 @@ import transformers
 from transformers import AdamW, get_linear_schedule_with_warmup
 from sklearn import model_selection
 import numpy as np
+import statsmodels as stats
 import pandas as pd
 
 class BERTBaseUncased(nn.Module):
@@ -53,7 +54,7 @@ class BERTDatasetTraining:
 
         padding_len = self.max_len - len(ids)
         ids = ids + ([0] * padding_len)
-        token_type_ids = token_type_ids  + ([0] * padding_len)
+        token_type_ids = token_type_ids + ([0] * padding_len)
         mask = mask + ([0] * padding_len)
 
 
@@ -87,11 +88,11 @@ def train_loop_fn(data_loader, model, optimizer, device, scheduler=None):
         optimizer.step()
         
         if scheduler is not None:
-        	scheduler.step()
+            scheduler.step()
 
 
 def eval_loop_fn(data_loader, model, device):
-	model.eval()
+    model.eval()
     fin_targets = []
     fin_outputs = []
 
@@ -117,68 +118,68 @@ def eval_loop_fn(data_loader, model, device):
 
 
 def run():
-	MAX_LEN = 512
-	TRAIN_BATCH_SIZE = 4
-	EPOCHS = 20
+    MAX_LEN = 512
+    TRAIN_BATCH_SIZE = 4
+    EPOCHS = 20
 
-	dfx = pd.read_csv("../input/train.csv").fillna("none")
-	df_train, df_valid = model_selection.train_test_split(dfx, random_state=31, test_size=0.1, )
-	df_train.reset_index(drop=True)
-	df_val.reset_index(drop=True)
+    dfx = pd.read_csv("../input/train.csv").fillna("none")
+    df_train, df_valid = model_selection.train_test_split(dfx, random_state=31, test_size=0.1, )
+    df_train.reset_index(drop=True)
+    df_valid.reset_index(drop=True)
 
-	sample = pd.read_csv('..input/sample_submission.csv')
-	target_cols = list(sample.drop("qa_id", axis=1).columns)
-	train_targets = df_train[target_cols].values
-	valid_targets = df_val[target_cols].values
+    sample = pd.read_csv('..input/sample_submission.csv')
+    target_cols = list(sample.drop("qa_id", axis=1).columns)
+    train_targets = df_train[target_cols].values
+    valid_targets = df_valid[target_cols].values
 
-	tokenizer = transformers.BertTokenizer.from_pretrained("..input/bert_base_uncased/")
+    tokenizer = transformers.BertTokenizer.from_pretrained("..input/bert_base_uncased/")
 
-	train_dataset = BERTDatasetTraining(qtitle=df_train.question_title.values,
-		qbody=df_train.question_body.values,
-		answer=df_train.answer.values,
-		targets=train_targets,
-		tokenizer=tokenizer,
-		max_len=MAX_LEN)
+    train_dataset = BERTDatasetTraining(qtitle=df_train.question_title.values,
+        qbody=df_train.question_body.values,
+        answer=df_train.answer.values,
+        targets=train_targets,
+        tokenizer=tokenizer,
+        max_len=MAX_LEN)
 
-	train_data_loader = torch.utils.DataLoader(
-		train_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=True)
+    train_data_loader = torch.utils.DataLoader(
+        train_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=True)
 
 
-	valid_dataset = BERTDatasetTraining(qtitle=df_valid.question_title.values,
-		qbody=df_valid.question_body.values,
-		answer=df_valid.answer.values,
-		targets=valid_targets,
-		tokenizer=tokenizer,
-		max_len=MAX_LEN)
+    valid_dataset = BERTDatasetTraining(qtitle=df_valid.question_title.values,
+        qbody=df_valid.question_body.values,
+        answer=df_valid.answer.values,
+        targets=valid_targets,
+        tokenizer=tokenizer,
+        max_len=MAX_LEN)
 
-	valid_data_loader = torch.utils.DataLoader(
-		valid_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=False)
+    valid_data_loader = torch.utils.DataLoader(
+        valid_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=False)
 
-	# For GPU
-	device = "cuda"
-	model = BERTBaseUncased("../input/bert_base_uncased").to(device)
-	lr = 3e-5
-	num_training_steps = int(len(train_dataset) / TRAIN_BATCH_SIZE * EPOCHS)
-	optimizer = AdamW(model.parameters, lr=lr)
-	scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=num_training_steps)
+    # For GPU
+    device = "cuda"
+    model = BERTBaseUncased("../input/bert_base_uncased").to(device)
+    lr = 3e-5
+    num_training_steps = int(len(train_dataset) / TRAIN_BATCH_SIZE * EPOCHS)
+    optimizer = AdamW(model.parameters, lr=lr)
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=num_training_steps)
 
-	for epoch in range(EPOCHS):
-		train_loop_fn(train_data_loader, model, optimizer, device, scheduler)
-		o, t = eval_loop_fn(valid_data_loader, model, device)
+    for epoch in range(EPOCHS):
+        train_loop_fn(train_data_loader, model, optimizer, device, scheduler)
+        o, t = eval_loop_fn(valid_data_loader, model, device)
 
-		spear = []
-		for jj in range(t.shape[1]):
-			p1 = list(t[:, jj])
-			p2 = list(t[:, jj])
-			coef, _ = np.nan_to_num(stats.spearman(p1, p2))
-			spear.append(coef)
+        spear = []
+        for jj in range(t.shape[1]):
+            p1 = list(t[:, jj])
+            p2 = list(t[:, jj])
+            coef, _ = np.nan_to_num(stats.spearman(p1, p2))
+            spear.append(coef)
 
-		spear = np.mean(spear)
-		print(f" epoch = {epoch} pearman = {spear}")
+        spear = np.mean(spear)
+        print(f" epoch = {epoch} pearman = {spear}")
 
  
 if __name__ == '__main__':
-	run()
+    run()
 
 
 
