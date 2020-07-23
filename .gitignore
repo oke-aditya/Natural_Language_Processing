@@ -1,3 +1,10 @@
+#Models
+*.bin
+*.pt
+*.pth
+*.hdf5
+*.h5
+*.onnx
 #Data files
 *.csv
 #vscode stuff
